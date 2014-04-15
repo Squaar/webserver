@@ -2,8 +2,9 @@
 
 import socket
 import argparse
+import HTTPRequest
 
-BUFFER_SIZE = 1024
+BUFFER_SIZE = 1024*8
 
 parser = argparse.ArgumentParser()
 parser.add_argument("port", type=int, nargs="?", default=8888,
@@ -29,16 +30,17 @@ while 1:
     if args.verbose:
         print("\nconnection: " + addr[0])
 
-    data = ""
-    while 1:
-        newData = conn.recv(BUFFER_SIZE)
-        if not newData:
-            break
-        else:
-            data += str(newData)
+    data = conn.recv(BUFFER_SIZE)
+    if not data:
+        conn.close()
+        continue
 
     if args.verbose:
         print(str(data))
+
+    request = HTTPRequest.HTTPRequest(str(data))
+    print(request.path)
+    print(request.error_code)
 
     conn.close()
 
