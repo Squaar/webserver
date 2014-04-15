@@ -22,8 +22,7 @@ if args.verbose:
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.bind(("", args.port))
 sock.listen(1)
-print("ready")
-
+print("ready") 
 while 1:
     conn, addr = sock.accept()
 
@@ -39,9 +38,11 @@ while 1:
         print(str(data))
 
     request = HTTPRequest.HTTPRequest(str(data))
-    print(request.path)
     print(request.error_code)
+    #print(request.path)
+    #print(request.error_code)
 
+    #conn.send(bytes("TEST TEST TEST", "UTF-8"))
     conn.close()
 
 
