@@ -38,12 +38,16 @@ while 1:
         print(str(data, "UTF-8") + "\n")
 
     request = HTTPRequest.HTTPRequest(data)
-    print(str(request.error_code) + request.error_message)
-    print(request.path)
-    print(request.error_code)
 
-    #conn.send(bytes("TEST TEST TEST", "UTF-8"))
+    #error in the header
+    if request.error_code is not None:
+        print(str(request.error_code) + request.error_message)
+
+    #It worked!
+    else:
+        if args.verbose:
+            print(request.path)
+        conn.send(bytes("TEST TEST TEST", "UTF-8"))
+
+
     conn.close()
-
-
-
