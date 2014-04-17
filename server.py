@@ -35,12 +35,12 @@ while 1:
         continue
 
     if args.verbose:
-        print(str(data))
+        print(str(data, "UTF-8") + "\n")
 
-    request = HTTPRequest.HTTPRequest(str(data))
+    request = HTTPRequest.HTTPRequest(data)
+    print(str(request.error_code) + request.error_message)
+    print(request.path)
     print(request.error_code)
-    #print(request.path)
-    #print(request.error_code)
 
     #conn.send(bytes("TEST TEST TEST", "UTF-8"))
     conn.close()
