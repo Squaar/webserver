@@ -15,7 +15,6 @@ class HTTPServer():
 		self.cwd = os.getcwd()
 
 
-
 	def run(self):
 		while 1:
 		    conn, addr = self.sock.accept()
@@ -62,10 +61,12 @@ class HTTPServer():
 		else:
 			try:
 				request.file = open(self.cwd + request.path, "rb")
+				self.conn.send(request.file.read())
 			except IOError as e:
 				if request.verbose:
 					print(str(f.errno) + " " + f.errstr)
 				self.handle_error(404, "File not found.")
+
 
 	def handle_error(self, errno, errstr):
 		fd = errstr
