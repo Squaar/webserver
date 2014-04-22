@@ -2,9 +2,9 @@
 
 import socket
 import argparse
-import HTTPRequest
+# import HTTPRequest
+import HTTPServer
 
-BUFFER_SIZE = 1024*8
 
 parser = argparse.ArgumentParser()
 parser.add_argument("port", type=int, nargs="?", default=8888,
@@ -23,31 +23,6 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.bind(("", args.port))
 sock.listen(1)
 print("ready") 
-while 1:
-    conn, addr = sock.accept()
 
-    if args.verbose:
-        print("\nconnection: " + addr[0])
-
-    data = conn.recv(BUFFER_SIZE)
-    if not data:
-        conn.close()
-        continue
-
-    if args.verbose:
-        print(str(data, "UTF-8") + "\n")
-
-    request = HTTPRequest.HTTPRequest(data)
-
-    #error in the header
-    if request.error_code is not None:
-        print(str(request.error_code) + request.error_message)
-
-    #It worked!
-    else:
-        if args.verbose:
-            print(request.path)
-        conn.send(bytes("TEST TEST TEST", "UTF-8"))
-
-
-    conn.close()
+server = HTTPServer.HTTPServer(sock, verbose=args.verbose)
+server.run()
