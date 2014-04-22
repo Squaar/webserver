@@ -1,7 +1,7 @@
 import socket
 import HTTPRequest
 from os.path import isdir
-from os import getcwd
+import os
 
 class HTTPServer():
 
@@ -34,17 +34,17 @@ class HTTPServer():
 
 		    if request.error_code is not None:
 		    	handle_error(request.errno, request.errstr)
-
-		    if self.verbose:
-		        print(request.path)
-		    self.handle_request(request)
+		    else:
+			    if self.verbose:
+			        print(request.path)
+			    self.handle_request(request)
 
 		    conn.close()
 
 
 	def handle_request(self, request):
 		request.file = None
-		if isdir(request.path):
+		if isdir(self.cwd + request.path):
 			try:
 				request.file = open(self.cwd + request.path + "/index.html", "rb")
 			except IOError as e:
@@ -55,9 +55,9 @@ class HTTPServer():
 				except IOError as f:
 					if request.verbose:
 						print(str(f.errno) + " " + f.errstr)
-					#generate index page
-			# if request.file is not None:
-				#read in file and send
+					self.handle_error(404, "File not found.")
+			if request.file is not None:
+				self.conn.send(request.file.read())
 
 		else:
 			try:
@@ -65,13 +65,14 @@ class HTTPServer():
 			except IOError as e:
 				if request.verbose:
 					print(str(f.errno) + " " + f.errstr)
-				handle_error(404, "File not found.")
+				self.handle_error(404, "File not found.")
 
 	def handle_error(self, errno, errstr):
 		fd = errstr
 		try:
 			fd = open("errors/" + str(errno) + ".html", "rb")
 		except IOError as e:
+			print("Error opening error")
 			fd = open("errors/500.html", "rb")
 
 		self.conn.send(fd.read())
