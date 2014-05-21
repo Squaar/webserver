@@ -1,11 +1,13 @@
 #!/usr/bin/python3
 
 import socket
-import HTTPRequest
+# import HTTPRequest
 import os
 import argparse
 from os.path import isdir
-
+from http.server import BaseHTTPRequestHandler
+from io import StringIO
+from http.client import HTTPException
 
 class HTTPServer():
 
@@ -34,7 +36,7 @@ class HTTPServer():
                     conn.close()
                     continue
 
-                request = HTTPRequest.HTTPRequest(data)
+                request = HTTPRequest(data)
 
                 if request.error_code is not None:
                     handle_error(request.errno, request.errstr)
@@ -109,6 +111,25 @@ class HTTPServer():
         header += "Content-Type: " + type + "; charset=utf-8\r\n"
         header += "Content-Length: " + length + "\r\n\r\n"
         return header
+
+
+class HTTPRequest(BaseHTTPRequestHandler):
+    def __init__(self, request, verbose=False):
+        self.verbose = verbose
+        self.rfile = StringIO(str(request, "UTF-8"))
+        self.raw_requestline = bytes(self.rfile.readline(), "UTF-8")
+        self.error_code = self.error_message = None
+
+        # Ignore this exception. It is not relevant if you're
+        # not useing the http.client class
+        try:
+            self.parse_request()
+        except HTTPException:
+            pass
+
+    def send_error(self, code, message):
+        self.error_code = code
+        self.error_message = message
 
 
 if __name__ == "__main__":
