@@ -20,30 +20,37 @@ class HTTPServer():
         self.servPath = os.path.dirname(os.path.realpath(__file__))
 
     def run(self):
-        while 1:
-            conn, addr = self.sock.accept()
-            self.conn = conn
-            self.addr = addr
+        try:
+            while 1:
+                conn, addr = self.sock.accept()
+                self.conn = conn
+                self.addr = addr
 
-            if self.verbose:
-                print("\nconnection: " + addr[0])
-
-            data = conn.recv(HTTPServer.BUFFER_SIZE)
-            if not data:
-                conn.close()
-                continue
-
-            request = HTTPRequest.HTTPRequest(data)
-
-            if request.error_code is not None:
-                handle_error(request.errno, request.errstr)
-            else:
                 if self.verbose:
-                    print(request.path)
-                self.handle_request(request)
+                    print("\nconnection: " + addr[0])
 
-            conn.close()
+                data = conn.recv(HTTPServer.BUFFER_SIZE)
+                if not data:
+                    conn.close()
+                    continue
 
+                request = HTTPRequest.HTTPRequest(data)
+
+                if request.error_code is not None:
+                    handle_error(request.errno, request.errstr)
+                else:
+                    if self.verbose:
+                        print(request.path)
+                    self.handle_request(request)
+
+                conn.close()
+        except KeyboardInterrupt:
+            if self.verbose:
+                print("\nCaught keyboard interrupt. Shutting down.")
+
+            if self.conn is not None:
+                self.conn.close()
+            self.sock.close()
 
     def handle_request(self, request):
         request.file = None
@@ -62,10 +69,11 @@ class HTTPServer():
                 except IOError as f:
                     if request.verbose:
                         print(str(f.errno) + " " + f.errstr)
-                    #should generate index here but 404 for now
+                    # should generate index here but 404 for now
                     self.handle_error(404, "File not found.")
             if request.file is not None:
-                header = generate_response_header(200, "OK", "text/html", request.fileSize)
+                header = generate_response_header(200, "OK", "text/html",
+                                                  request.fileSize)
                 self.conn.send(header + request.file.read())
 
             else:
@@ -73,13 +81,13 @@ class HTTPServer():
                     path = self.cwd + request.path
                     request.file = open(path, "rb")
                     request.fileSize = os.stat(path).st_size
-                    header = generate_response_header(200, "OK", "text/html", request.fileSize)
+                    header = generate_response_header(200, "OK", "text/html",
+                                                      request.fileSize)
                     self.conn.send(request.file.read())
                 except IOError as e:
                     if request.verbose:
                         print(str(f.errno) + " " + f.errstr)
                     self.handle_error(404, "File not found.")
-
 
     def handle_error(self, errno, errstr):
         fd = errstr
@@ -93,24 +101,22 @@ class HTTPServer():
             path = self.servPath + "/errors/500.html"
             fd = open(path, "rb")
             size = os.stat(path).st_size
-                
             header = generate_response_header(errno, errstr, "text/html", size)
             self.conn.send(header + fd.read())
 
-
     def generate_response_header(self, code, message, type, length):
-        header = "HTTP/1.1 " + code + " " + message + "\r\n" 
-        header += "Content-Type: " + type + "; charset=utf-8\r\n" 
+        header = "HTTP/1.1 " + code + " " + message + "\r\n"
+        header += "Content-Type: " + type + "; charset=utf-8\r\n"
         header += "Content-Length: " + length + "\r\n\r\n"
         return header
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("port", type=int, nargs="?", default=8888, 
-            help="The port to run on. Defaults to 8888.")
-    parser.add_argument("-v", "--verbose", action="store_true", 
-            help="Verbosity.")
+    parser.add_argument("port", type=int, nargs="?", default=8888,
+                        help="The port to run on. Defaults to 8888.")
+    parser.add_argument("-v", "--verbose", action="store_true",
+                        help="Verbosity.")
     args = parser.parse_args()
 
     host = socket.gethostbyname(socket.gethostname())
@@ -122,7 +128,7 @@ if __name__ == "__main__":
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind(("", args.port))
     sock.listen(1)
-    print("ready") 
+    print("ready")
 
     server = HTTPServer(sock, verbose=args.verbose)
     server.run()
