@@ -1,13 +1,10 @@
 #!/usr/bin/python3
 
 import socket
-# import HTTPRequest
 import os
 import argparse
 from os.path import isdir
-from http.server import BaseHTTPRequestHandler
-from io import StringIO
-from http.client import HTTPException
+
 
 class HTTPServer():
 
@@ -39,7 +36,7 @@ class HTTPServer():
                 request = HTTPRequest(data)
 
                 if request.error_code is not None:
-                    handle_error(request.errno, request.errstr)
+                    self.handle_error(request.errno, request.errstr)
                 else:
                     if self.verbose:
                         print(request.path)
@@ -74,17 +71,19 @@ class HTTPServer():
                     # should generate index here but 404 for now
                     self.handle_error(404, "File not found.")
             if request.file is not None:
-                header = generate_response_header(200, "OK", "text/html",
-                                                  request.fileSize)
-                self.conn.send(header + request.file.read())
+                header = self.generate_response_header(
+                    200, "OK", "text/html", request.fileSize)
+                self.conn.send(bytes(header, "utf-8"))
+                self.conn.send(request.file.read())
 
             else:
                 try:
                     path = self.cwd + request.path
                     request.file = open(path, "rb")
                     request.fileSize = os.stat(path).st_size
-                    header = generate_response_header(200, "OK", "text/html",
-                                                      request.fileSize)
+                    header = self.generate_response_header(
+                        200, "OK", "text/html", request.fileSize)
+                    self.conn.send(bytes(header, "utf-8"))
                     self.conn.send(request.file.read())
                 except IOError as e:
                     if request.verbose:
@@ -98,34 +97,34 @@ class HTTPServer():
             path = self.servPath + "/errors/" + str(errno) + ".html"
             fd = open(path, "rb")
             size = os.stat(path).st_size
-        except IOError as e:
+        except IOError:
             print("Error opening error")
             path = self.servPath + "/errors/500.html"
             fd = open(path, "rb")
             size = os.stat(path).st_size
-            header = generate_response_header(errno, errstr, "text/html", size)
-            self.conn.send(header + fd.read())
+
+        header = self.generate_response_header(
+            errno, errstr, "text/html", size)
+        self.conn.send(bytes(header, "utf-8"))
+        self.conn.send(fd.read())
 
     def generate_response_header(self, code, message, type, length):
-        header = "HTTP/1.1 " + code + " " + message + "\r\n"
+        header = "HTTP/1.1 " + str(code) + " " + message + "\r\n"
         header += "Content-Type: " + type + "; charset=utf-8\r\n"
-        header += "Content-Length: " + length + "\r\n\r\n"
+        header += "Content-Length: " + str(length) + "\r\n\r\n"
         return header
 
 
-class HTTPRequest(BaseHTTPRequestHandler):
+class HTTPRequest:
     def __init__(self, request, verbose=False):
         self.verbose = verbose
-        self.rfile = StringIO(str(request, "UTF-8"))
-        self.raw_requestline = bytes(self.rfile.readline(), "UTF-8")
+        self.fullRequest = str(request, "utf-8")
         self.error_code = self.error_message = None
+        self.parse_request()
 
-        # Ignore this exception. It is not relevant if you're
-        # not useing the http.client class
-        try:
-            self.parse_request()
-        except HTTPException:
-            pass
+    def parse_request(self):
+        requestline = self.fullRequest.split("\r\n")[0]
+        self.path = requestline.split()[1]
 
     def send_error(self, code, message):
         self.error_code = code
@@ -134,10 +133,12 @@ class HTTPRequest(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("port", type=int, nargs="?", default=8888,
-                        help="The port to run on. Defaults to 8888.")
-    parser.add_argument("-v", "--verbose", action="store_true",
-                        help="Verbosity.")
+    parser.add_argument(
+        "port", type=int, nargs="?", default=8888,
+        help="The port to run on. Defaults to 8888.")
+    parser.add_argument(
+        "-v", "--verbose", action="store_true",
+        help="Verbosity.")
     args = parser.parse_args()
 
     host = socket.gethostbyname(socket.gethostname())
@@ -147,6 +148,7 @@ if __name__ == "__main__":
         print("host: " + str(host) + ":" + str(args.port))
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(("", args.port))
     sock.listen(1)
     print("ready")
