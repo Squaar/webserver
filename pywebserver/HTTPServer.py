@@ -10,17 +10,23 @@ class HTTPServer():
 
     BUFFER_SIZE = 1024*8
 
-    def __init__(self, sock, verbose=False):
+    def __init__(self, port=80, verbose=False):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(("", args.port))
+        sock.listen(1)
         self.sock = sock
         self.conn = None
         self.addr = None
         self.verbose = verbose
         self.cwd = os.getcwd()
-        self.servPath = os.path.dirname(os.path.realpath(__file__))
+        self.serve_path = os.path.dirname(os.path.realpath(__file__))
+        if self.verbose:
+            print("ready")
 
     def run(self):
         try:
-            while 1:
+            while True:
                 conn, addr = self.sock.accept()
                 self.conn = conn
                 self.addr = addr
@@ -94,12 +100,12 @@ class HTTPServer():
         fd = errstr
         size = len(fd)
         try:
-            path = self.servPath + "/errors/" + str(errno) + ".html"
+            path = self.serve_path + "/errors/" + str(errno) + ".html"
             fd = open(path, "rb")
             size = os.stat(path).st_size
         except IOError:
             print("Error opening error")
-            path = self.servPath + "/errors/500.html"
+            path = self.serve_path + "/errors/500.html"
             fd = open(path, "rb")
             size = os.stat(path).st_size
 
@@ -133,25 +139,13 @@ class HTTPRequest:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "port", type=int, nargs="?", default=8888,
-        help="The port to run on. Defaults to 8888.")
-    parser.add_argument(
-        "-v", "--verbose", action="store_true",
-        help="Verbosity.")
+    parser.add_argument("port", type=int, nargs="?", default=8888,
+        help="The port to run on. Defaults to 8888."
+    )
+    parser.add_argument("-v", "--verbose", action="store_true",
+        help="Verbosity."
+    )
     args = parser.parse_args()
 
-    host = socket.gethostbyname(socket.gethostname())
-
-    if args.verbose:
-        print("verbose ON")
-        print("host: " + str(host) + ":" + str(args.port))
-
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind(("", args.port))
-    sock.listen(1)
-    print("ready")
-
-    server = HTTPServer(sock, verbose=args.verbose)
+    server = HTTPServer(port=args.port, verbose=args.verbose)
     server.run()
